@@ -1,0 +1,44 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: amqp-csv-created
+spec:
+  template:
+    serviceAccountName: operate-workflow-sa
+  dependencies:
+    - name: rm-dep
+      eventSourceName: amqp-csv-created
+      eventName: example
+  triggers:
+  
+    - template:
+        name: csvsplitter
+        argoWorkflow:
+          operation: submit
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: csvsplitter-
+              spec:
+                entrypoint: csvsplitter
+                arguments:
+                  parameters:
+                    - name: message
+                      # value will get overridden by the event payload
+                      value: hello world
+                templates:
+                  - name: csvsplitter
+                    inputs:
+                      parameters:
+                        - name: message
+                    container:
+                      image: kth-datacloud-csv-splitter:latest
+                      command: [sh -c "/app/csvsplitter"]
+                      args: ["{{inputs.parameters.message}}"]
+          parameters:
+            - src:
+                dependencyName: rm-dep
+                dataKey: body
+              dest: spec.arguments.parameters.0.value

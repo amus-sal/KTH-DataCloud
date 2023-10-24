@@ -1,0 +1,129 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  name: orchestrator
+spec:
+  entrypoint: orchestrator
+  arguments:
+    parameters:
+    - name: input
+      value: hello world
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 1Gi
+
+  templates:
+  - name: orchestrator
+    dag:
+      tasks:
+        - name: unzipper
+          template: unzipper-template
+          arguments:
+            parameters:
+            - name: input-data
+              value: test
+        - name: csvconverter
+          template: csvconverter-template
+          dependencies: [unzipper]
+          arguments:
+            parameters:
+            - name: input-data
+              value: "{{unzipper.outputs.parameters.output}}}"
+        - name: csvsplitter
+          template: csvsplitter-template
+          dependencies: [csvconverter]
+          arguments:
+            parameters:
+            - name: input-data
+              value: "{{csvconverter.outputs.parameters.output}}"
+            - name: output-data
+              value: /code/split-csv
+        - name: csvcleaner
+          template: csvcleaner-template
+          dependencies: [csvsplitter]
+          arguments:
+            parameters:
+            - name: input-data
+              value: "{{csvsplitter.outputs..parameters.output}}}"
+        - name: arangodbconverter
+          template: arangodbconverter-template
+          dependencies: [csvcleaner]
+          arguments:
+            parameters:
+            - name: input-data
+              value: "{{csvcleaner.outputs..parameters.output}}}"
+            - name: output-data
+              value: /code/arangodb-data
+
+  - name: unzipper-template
+    inputs:
+      parameters:
+      - name: input-data
+    container:
+      image: datacloud_kth-datacloud:latest
+      command: [unzipper]
+      args: [ "test"]
+    outputs:
+      parameters:
+      - name: output  # name of output parameter
+        valueFrom:
+          path: /tmp/output.txt 
+
+
+  - name: csvconverter-template
+    inputs:
+      parameters:
+      - name: input-data
+    container:
+      image: csvconverter:latest
+      command: [csvconverter]
+      args: ["csvconverter"]
+    outputs:
+      parameters:
+      - name: output  # name of output parameter
+        valueFrom:
+          path: /tmp/output.txt 
+  - name: csvsplitter-template
+    inputs:
+      parameters:
+      - name: input-data
+    container:
+      image: csvsplitter:latest
+      command: [csvsplitter]
+      args: [ "{{inputs.parameters.input-data}}"]
+    outputs:
+      parameters:
+      - name: output  # name of output parameter
+        valueFrom:
+          path: /tmp/output.txt 
+  - name: csvcleaner-template
+    inputs:
+      parameters:
+      - name: input-data
+    container:
+      image: csvcleaner:latest
+      command: [csvcleaner]
+      args: ["csvcleaner", "{{inputs.parameters.input-data}}"]
+    outputs:
+      parameters:
+      - name: output  # name of output parameter
+        valueFrom:
+          path: /tmp/output.txt 
+  - name: arangodbconverter-template
+    inputs:
+      parameters:
+      - name: input-data
+    container:
+      image: arangodbconverter:latest
+      command: [arangodbconverter]
+      args: ["arangodbconverter", "{{inputs.parameters.input-data}}"]
+    outputs:
+      parameters:
+      - name: output  # name of output parameter
+        valueFrom:
+          path: /tmp/output.txt 

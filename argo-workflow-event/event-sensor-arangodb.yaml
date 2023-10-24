@@ -1,0 +1,44 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: amqp-csv-finalized
+spec:
+  template:
+    serviceAccountName: operate-workflow-sa
+  dependencies:
+    - name: rm-dep
+      eventSourceName: amqp-csv-finalized
+      eventName: example
+  triggers:
+  
+    - template:
+        name: arangodbconverter
+        argoWorkflow:
+          operation: submit
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: arangodbconverter-
+              spec:
+                entrypoint: arangodbconverter
+                arguments:
+                  parameters:
+                    - name: message
+                      # value will get overridden by the event payload
+                      value: hello world
+                templates:
+                  - name: arangodbconverter
+                    inputs:
+                      parameters:
+                        - name: message
+                    container:
+                      image: kth-datacloud-arangodb-converter:latest
+                      command: [sh -c "/app/arangodbconverter"]
+                      args: ["{{inputs.parameters.message}}"]
+          parameters:
+            - src:
+                dependencyName: rm-dep
+                dataKey: body
+              dest: spec.arguments.parameters.0.value

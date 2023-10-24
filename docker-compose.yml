@@ -1,0 +1,63 @@
+version: "3.9"
+services:
+  rabbitmq:
+    image: "rabbitmq:3.10.7-management"
+    hostname: rabbitmq
+    logging:
+      driver: none
+    volumes:
+      - ./rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins
+      - ./rabbitmq/rabbitmq_delayed_message_exchange-3.10.2.ez:/opt/rabbitmq/plugins/rabbitmq_delayed_message_exchange-3.10.2.ez
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+  kth-datacloud-unzipper:
+    build: ./kth-datacloud-unzipper
+    ports:
+      - "8085:8085"
+    volumes:
+      - shared-volume:/usr/file
+    depends_on:
+      - rabbitmq
+
+    entrypoint: sh -c "/app/unzipper"
+
+  kth-datacloud-csv-converter:
+    
+    build: ./kth-datacloud-csv-converter
+    volumes:
+      - shared-volume:/usr/file
+    depends_on:
+      - rabbitmq
+
+    entrypoint: sh -c "/app/csvConverter"
+  kth-datacloud-csv-spliter:
+    build: ./kth-datacloud-csv-spliter
+    volumes:
+      - shared-volume:/usr/file
+    depends_on:
+      - rabbitmq
+
+    entrypoint: sh -c "/app/csvSpliter"
+  
+  kth-datacloud-csv-cleaner:
+    build: ./kth-datacloud-csv-cleaner
+    volumes:
+      - shared-volume:/usr/file
+    depends_on:
+      - rabbitmq
+
+    entrypoint: sh -c "/app/csvCleaner"
+
+  kth-datacloud-arangodb-converer:
+    build: ./kth-datacloud-arangoDB-converer
+    volumes:
+      - shared-volume:/usr/file
+
+    depends_on:
+      - rabbitmq
+
+    entrypoint: sh -c "/app/arconverter"
+
+volumes:
+  shared-volume:

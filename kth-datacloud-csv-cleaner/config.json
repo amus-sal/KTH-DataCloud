@@ -1,0 +1,6 @@
+{
+    "rabbitmq": {
+        "url": "amqp://guest:guest@rabbitmq:5672",
+        "v2exchange": "datacloud.v2"
+      }
+}

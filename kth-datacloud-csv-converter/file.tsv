@@ -1,0 +1,6 @@
+Name	Text	Start	End	Spec	Focused	Pending
+Describe	NodotFixture	130	785	FALSE	FALSE	FALSE
+Describe	normal	175	308	FALSE	FALSE	FALSE
+It	normal	215	304	TRUE	FALSE	FALSE
+By	normal	250	272	FALSE	FALSE	FALSE
+By	normal	276	298	FALSE	FALSE	FALSE
